@@ -3,6 +3,7 @@
 
 from src.api_client import get_players, get_games, get_teams
 from src.models import Player, Team, Game
+from datetime import date
 
 """
 # Test 1 — Chercher un joueur
@@ -44,7 +45,7 @@ games = [Game(**g) for g in games_data["data"][:5]]
 for game in games:
     print(f"{game.date[:10]} | Vainqueur: {game.winner} | Écart: {game.point_difference} pts")
 
-"""
+
 # Mock temporaire pour tester les modèles Game sans appeler l'API
 team_data = get_teams() 
 mock_game = {
@@ -60,3 +61,13 @@ mock_game = {
 
 game = Game(**mock_game)
 print(f"{game.date[:10]} | Vainqueur: {game.winner} | Écart: {game.point_difference} pts")
+"""
+
+#Test final — Récupérer les matchs d'aujourd'hui et afficher le vainqueur
+
+print("=== Matchs d'aujourd'hui ===")
+today = date.today().isoformat()
+games_data = get_games(date=today)
+games = [Game(**g) for g in games_data["data"]]
+for game in games:
+    print(f"{game.date[:10]} | {game.home_team.full_name} vs {game.visitor_team.full_name} | Vainqueur: {game.winner}")
