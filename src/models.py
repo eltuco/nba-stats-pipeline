@@ -16,7 +16,7 @@ class Player(BaseModel):
     last_name: str
     position: Optional[str] = None
     height: Optional[str] = None
-    weight: Optional[int] = None
+    weight: Optional[str] = None
     team: Optional[Team] = None
 
     @property # @property pour créer une méthode qui se comporte comme un attribut
@@ -44,3 +44,30 @@ class Game(BaseModel):
     @property # @property pour créer une méthode qui se comporte comme un attribut
     def point_difference(self) -> int:
         return abs(self.home_team_score - self.visitor_team_score)  
+    
+"""
+class PersonneSimple:
+    def __init__(self, first_name, last_name):
+        self.first_name = first_name
+        self.last_name = last_name
+
+data = {"first_name": "LeBron", "last_name": "James"}
+
+# Ces 2 syntaxes sont équivalentes :
+p1 = PersonneSimple(first_name="LeBron", last_name="James")
+p2 = PersonneSimple(**data)  # ← Le ** déplie le dict
+
+######
+
+player_dict = {
+    "id": 237,
+    "first_name": "LeBron",
+    "last_name": "James",
+    "position": "F",
+    "team": {...}
+}
+
+# Ces 2 syntaxes fonctionnent :
+player1 = Player(id=237, first_name="LeBron", last_name="James", ...)  # Verbeux
+player2 = Player(**player_dict)  # ← Élégant et direct
+ """

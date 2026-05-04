@@ -5,7 +5,7 @@ from src.api_client import get_players, get_games, get_teams
 from src.models import Player, Team, Game
 from datetime import date
 
-"""
+
 # Test 1 — Chercher un joueur
 print("=== Test 1 : Chercher LeBron James ===")
 result = get_players(search="LeBron")
@@ -61,7 +61,7 @@ mock_game = {
 
 game = Game(**mock_game)
 print(f"{game.date[:10]} | Vainqueur: {game.winner} | Écart: {game.point_difference} pts")
-"""
+
 
 #Test final — Récupérer les matchs d'aujourd'hui et afficher le vainqueur
 

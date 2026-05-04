@@ -2,6 +2,7 @@ import os
 import requests
 from dotenv import load_dotenv
 import time
+from src.logger import logger
 
 load_dotenv()
 
@@ -13,21 +14,23 @@ BASE_URL = "https://api.balldontlie.io"
 HEADERS = {
     "Authorization": API_KEY
 }
-
-
-# Timestamp du dernier appel
+# Création d'un temps d'attente pour respecter le rate limit de l'API (5 appels/minute)
+## Paramètres pour le rate limit
 _last_call_time = 0
 _min_interval = 60 / 5  # 5 calls/minute = 1 appel toutes les 12 secondes
 
 def _rate_limit():
     """Attend si nécessaire pour respecter le rate limit."""
-    global _last_call_time
-    elapsed = time.time() - _last_call_time
-    if elapsed < _min_interval:
-        wait = _min_interval - elapsed
-        print(f"Rate limit : attente de {wait:.1f}s...")
-        time.sleep(wait)
-    _last_call_time = time.time()
+    global _last_call_time  # ← Je vais MODIFIER la variable globale
+    
+    elapsed = time.time() - _last_call_time  # Temps écoulé depuis le dernier appel
+    
+    if elapsed < _min_interval:  # Si pas assez de temps écoulé (< 12s)
+        wait = _min_interval - elapsed  # Calculer combien attendre
+        logger.debug(f"Rate limit : attente de {wait:.1f}s...")
+        time.sleep(wait)  # Pause forcée
+    
+    _last_call_time = time.time()  # ← Mise à jour du timestamp pour le prochain appel
 
 # Structuration d'une réponse typique de l'API:
 # response = requests.get(f"{BASE_URL}/endpoint", headers=api_key, params=paramètres du endpoint)   
@@ -52,6 +55,7 @@ def get_players(search: str=None, per_page: int=25, page: int=1)-> dict:
         headers=HEADERS, 
         params=params)
     response.raise_for_status()
+    logger.debug(f"get_players: {response.url} - Status: {response.status_code}")
     return response.json()
 
 
@@ -67,6 +71,7 @@ def get_teams() -> dict:
         headers=HEADERS
     )
     response.raise_for_status()
+    logger.debug(f"get_teams: {response.url} - Status: {response.status_code}")
     return response.json()
 
 def get_games(date: str = None, season: int = None, per_page: int = 10) -> dict:
@@ -95,4 +100,5 @@ def get_games(date: str = None, season: int = None, per_page: int = 10) -> dict:
         params=params
     )
     response.raise_for_status()
+    logger.debug(f"get_games: {response.url} - Status: {response.status_code}")
     return response.json()
