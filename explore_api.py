@@ -5,7 +5,6 @@ from src.api_client import get_players, get_games, get_teams
 from src.models import Player, Team, Game
 from datetime import date
 
-
 # Test 1 — Chercher un joueur
 print("=== Test 1 : Chercher LeBron James ===")
 result = get_players(search="LeBron")

@@ -3,6 +3,9 @@ import requests
 from dotenv import load_dotenv
 import time
 from src.logger import logger
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from requests.exceptions import HTTPError
+
 
 load_dotenv()
 
@@ -32,10 +35,34 @@ def _rate_limit():
     
     _last_call_time = time.time()  # ← Mise à jour du timestamp pour le prochain appel
 
+def _is_rate_limit_error(exception) -> bool:
+    """Retourne True si l'erreur est un 429 ou 500."""
+    return isinstance(exception, HTTPError) and exception.response.status_code in [429, 500]
+
+
+@retry(
+    retry=retry_if_exception_type(HTTPError),
+    wait=wait_exponential(multiplier=2, min=12, max=60),
+    stop=stop_after_attempt(5),
+    reraise=True
+)
 # Structuration d'une réponse typique de l'API:
 # response = requests.get(f"{BASE_URL}/endpoint", headers=api_key, params=paramètres du endpoint)   
 
 # Fonctions pour interagir avec l'API
+
+# @retry :
+# retry_if_exception_type(HTTPError) → réessaie uniquement sur les erreurs HTTP
+# wait_exponential(multiplier=2, min=12, max=60) → attend 12s, puis 24s, puis 48s, max 60s
+# stop_after_attempt(5) → abandonne après 5 tentatives
+# reraise=True → si toutes les tentatives échouent, lève quand même l'erreur
+
+@retry(
+    retry=retry_if_exception_type(HTTPError),
+    wait=wait_exponential(multiplier=2, min=12, max=60),
+    stop=stop_after_attempt(5),
+    reraise=True
+)
 def get_players(search: str=None, per_page: int=25, page: int=1)-> dict:
     """
     Récupère une liste de joueurs NBA avec une option de recherche par nom.
@@ -46,19 +73,27 @@ def get_players(search: str=None, per_page: int=25, page: int=1)-> dict:
     Returns:
         dict: Un dictionnaire contenant les données des joueurs récupérés.
     """
+    _rate_limit()
+
     params = {"per_page": per_page, "page": page}
     if search:
         params["search"] = search
-    _rate_limit()
+   
     response = requests.get(
         f"{BASE_URL}/v1/players", 
         headers=HEADERS, 
-        params=params)
+        params=params
+    )
     response.raise_for_status()
     logger.debug(f"get_players: {response.url} - Status: {response.status_code}")
     return response.json()
 
-
+@retry(
+    retry=retry_if_exception_type(HTTPError),
+    wait=wait_exponential(multiplier=2, min=12, max=60),
+    stop=stop_after_attempt(5),
+    reraise=True
+)
 def get_teams() -> dict:
     """
     Récupère la liste de toutes les équipes NBA.
@@ -74,6 +109,12 @@ def get_teams() -> dict:
     logger.debug(f"get_teams: {response.url} - Status: {response.status_code}")
     return response.json()
 
+@retry(
+    retry=retry_if_exception_type(HTTPError),
+    wait=wait_exponential(multiplier=2, min=12, max=60),
+    stop=stop_after_attempt(5),
+    reraise=True
+)
 def get_games(date: str = None, season: int = None, per_page: int = 10) -> dict:
     """
     Récupère les matchs NBA par date ou par saison.
@@ -87,7 +128,6 @@ def get_games(date: str = None, season: int = None, per_page: int = 10) -> dict:
         Dictionnaire contenant les données de l'API
     """
     _rate_limit()
-
     params = {"per_page": per_page}
     if date:
         params["dates[]"] = date
