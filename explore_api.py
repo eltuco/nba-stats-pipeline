@@ -1,9 +1,16 @@
 # explore_api.py
 # import des fonctions de l'API client pour tester les appels API
+from datetime import date
+import duckdb
+import numpy as np
+
 
 from src.api_client import get_players, get_games, get_teams
 from src.models import Player, Team, Game
-from datetime import date
+from src.loader import init_tables, insert_teams, insert_players
+from src.loader import DUCKDB_PATH
+
+"""
 
 # Test 1 — Chercher un joueur
 print("=== Test 1 : Chercher LeBron James ===")
@@ -70,3 +77,41 @@ games_data = get_games(date=today)
 games = [Game(**g) for g in games_data["data"]]
 for game in games:
     print(f"{game.date[:10]} | {game.home_team.full_name} vs {game.visitor_team.full_name} | Vainqueur: {game.winner}")
+
+# Test DuckDB
+print("\n=== Test DuckDB ===")
+init_tables()
+
+# Insérer les équipes
+teams = [Team(**t) for t in get_teams()["data"]]
+insert_teams(teams)
+
+# Insérer LeBron
+players = [Player(**p) for p in get_players(search="LeBron")["data"]]
+insert_players(players)
+
+"""
+# Test de la récupération des données depuis DuckDB
+
+# Vérification des données en base
+print("\n=== Requêtes SQL sur DuckDB ===")
+conn = duckdb.connect(DUCKDB_PATH)
+
+# Compter les équipes
+print(conn.execute("SELECT COUNT(*) as nb_equipes FROM teams").fetchdf())
+
+# Top 5 équipes par conférence
+print(conn.execute("""
+    SELECT conference, COUNT(*) as nb_equipes 
+    FROM teams 
+    GROUP BY conference 
+    ORDER BY conference
+""").fetchdf())
+
+# LeBron en base
+print(conn.execute("""
+    SELECT first_name, last_name, position, height, weight 
+    FROM players
+""").fetchdf())
+
+conn.close()
