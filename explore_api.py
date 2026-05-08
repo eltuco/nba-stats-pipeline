@@ -2,15 +2,14 @@
 # import des fonctions de l'API client pour tester les appels API
 from datetime import date
 import duckdb
-import numpy as np
+import time
+from datetime import date, timedelta
 
-
+from src.logger import logger
 from src.api_client import get_players, get_games, get_teams
 from src.models import Player, Team, Game
-from src.loader import init_tables, insert_teams, insert_players
+from src.loader import init_tables, insert_teams, insert_players, insert_games
 from src.loader import DUCKDB_PATH
-
-"""
 
 # Test 1 — Chercher un joueur
 print("=== Test 1 : Chercher LeBron James ===")
@@ -51,7 +50,6 @@ games = [Game(**g) for g in games_data["data"][:5]]
 for game in games:
     print(f"{game.date[:10]} | Vainqueur: {game.winner} | Écart: {game.point_difference} pts")
 
-
 # Mock temporaire pour tester les modèles Game sans appeler l'API
 team_data = get_teams() 
 mock_game = {
@@ -68,8 +66,7 @@ mock_game = {
 game = Game(**mock_game)
 print(f"{game.date[:10]} | Vainqueur: {game.winner} | Écart: {game.point_difference} pts")
 
-
-#Test final — Récupérer les matchs d'aujourd'hui et afficher le vainqueur
+#Test: récupérer les matchs d'aujourd'hui et afficher le vainqueur
 
 print("=== Matchs d'aujourd'hui ===")
 today = date.today().isoformat()
@@ -77,6 +74,7 @@ games_data = get_games(date=today)
 games = [Game(**g) for g in games_data["data"]]
 for game in games:
     print(f"{game.date[:10]} | {game.home_team.full_name} vs {game.visitor_team.full_name} | Vainqueur: {game.winner}")
+
 
 # Test DuckDB
 print("\n=== Test DuckDB ===")
@@ -90,28 +88,61 @@ insert_teams(teams)
 players = [Player(**p) for p in get_players(search="LeBron")["data"]]
 insert_players(players)
 
-"""
-# Test de la récupération des données depuis DuckDB
-
-# Vérification des données en base
-print("\n=== Requêtes SQL sur DuckDB ===")
+# UNE SEULE connexion pour toutes les requêtes
 conn = duckdb.connect(DUCKDB_PATH)
 
-# Compter les équipes
-print(conn.execute("SELECT COUNT(*) as nb_equipes FROM teams").fetchdf())
+print(conn.execute("SELECT COUNT(*) as nb_matchs FROM games").fetchdf())
 
-# Top 5 équipes par conférence
+print("\n=== Bilan par équipe ===")
 print(conn.execute("""
-    SELECT conference, COUNT(*) as nb_equipes 
-    FROM teams 
-    GROUP BY conference 
-    ORDER BY conference
-""").fetchdf())
+    WITH results AS (
+        SELECT home_team_id as team_id, 
+               CASE WHEN home_team_score > visitor_team_score THEN 1 ELSE 0 END as win
+        FROM games
+        UNION ALL
+        SELECT visitor_team_id as team_id,
+               CASE WHEN visitor_team_score > home_team_score THEN 1 ELSE 0 END as win
+        FROM games
+    )
+    SELECT t.full_name,
+           COUNT(*) as matchs_joues,
+           SUM(win) as victoires,
+           COUNT(*) - SUM(win) as defaites,
+           ROUND(SUM(win) * 100.0 / COUNT(*), 1) as pct_victoires
+    FROM results r
+    JOIN teams t ON r.team_id = t.id
+    GROUP BY t.full_name
+    ORDER BY pct_victoires DESC
+""").fetchdf().to_string(index=False))
 
-# LeBron en base
+print("\n=== Classement par conférence ===")
 print(conn.execute("""
-    SELECT first_name, last_name, position, height, weight 
-    FROM players
-""").fetchdf())
+    WITH results AS (
+        SELECT home_team_id as team_id,
+               CASE WHEN home_team_score > visitor_team_score THEN 1 ELSE 0 END as win
+        FROM games
+        UNION ALL
+        SELECT visitor_team_id as team_id,
+               CASE WHEN visitor_team_score > home_team_score THEN 1 ELSE 0 END as win
+        FROM games
+    ),
+    bilan AS (
+        SELECT t.full_name,
+               t.conference,
+               SUM(win) as victoires,
+               COUNT(*) - SUM(win) as defaites
+        FROM results r
+        JOIN teams t ON r.team_id = t.id
+        GROUP BY t.full_name, t.conference
+    )
+    SELECT full_name,
+           conference,
+           victoires,
+           defaites,
+           RANK() OVER (PARTITION BY conference ORDER BY victoires DESC) as rang_conference
+    FROM bilan
+    WHERE conference IN ('East', 'West')
+    ORDER BY conference, rang_conference
+""").fetchdf().to_string(index=False))
 
 conn.close()
