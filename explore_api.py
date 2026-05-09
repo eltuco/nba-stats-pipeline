@@ -2,13 +2,10 @@
 # import des fonctions de l'API client pour tester les appels API
 from datetime import date
 import duckdb
-import time
-from datetime import date, timedelta
 
-from src.logger import logger
 from src.api_client import get_players, get_games, get_teams
 from src.models import Player, Team, Game
-from src.loader import init_tables, insert_teams, insert_players, insert_games
+from src.loader import init_tables, insert_teams, insert_players
 from src.loader import DUCKDB_PATH
 
 # Test 1 — Chercher un joueur
@@ -78,6 +75,7 @@ for game in games:
 
 # Test DuckDB
 print("\n=== Test DuckDB ===")
+# Initialisation des tables
 init_tables()
 
 # Insérer les équipes
@@ -88,7 +86,8 @@ insert_teams(teams)
 players = [Player(**p) for p in get_players(search="LeBron")["data"]]
 insert_players(players)
 
-# UNE SEULE connexion pour toutes les requêtes
+# Correction:  une connexion pour toutes les requêtes
+# Ouverture de la connexion
 conn = duckdb.connect(DUCKDB_PATH)
 
 print(conn.execute("SELECT COUNT(*) as nb_matchs FROM games").fetchdf())

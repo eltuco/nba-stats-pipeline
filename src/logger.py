@@ -24,7 +24,7 @@ def setup_logger() -> logging.Logger:
     console_handler.setFormatter(formatter)
     file_handler.setFormatter(formatter)
 
-  # Ajout des handlers au logger
+    # Ajout des handlers au logger
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
 

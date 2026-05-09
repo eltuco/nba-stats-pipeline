@@ -35,27 +35,16 @@ def _rate_limit():
     
     _last_call_time = time.time()  # ← Mise à jour du timestamp pour le prochain appel
 
-def _is_rate_limit_error(exception) -> bool:
-    """Retourne True si l'erreur est un 429 ou 500."""
-    return isinstance(exception, HTTPError) and exception.response.status_code in [429, 500]
 
-
-@retry(
-    retry=retry_if_exception_type(HTTPError),
-    wait=wait_exponential(multiplier=2, min=12, max=60),
-    stop=stop_after_attempt(5),
-    reraise=True
-)
 # Structuration d'une réponse typique de l'API:
 # response = requests.get(f"{BASE_URL}/endpoint", headers=api_key, params=paramètres du endpoint)   
 
-# Fonctions pour interagir avec l'API
-
-# @retry :
-# retry_if_exception_type(HTTPError) → réessaie uniquement sur les erreurs HTTP
-# wait_exponential(multiplier=2, min=12, max=60) → attend 12s, puis 24s, puis 48s, max 60s
-# stop_after_attempt(5) → abandonne après 5 tentatives
-# reraise=True → si toutes les tentatives échouent, lève quand même l'erreur
+# Fonction pour interagir avec l'API et gérer les calls:
+## @retry :
+### retry_if_exception_type(HTTPError) → réessaie uniquement sur les erreurs HTTP
+### wait_exponential(multiplier=2, min=12, max=60) → attend 12s, puis 24s, puis 48s, max 60s
+### stop_after_attempt(5) → abandonne après 5 tentatives
+### reraise=True → si toutes les tentatives échouent, lève quand même l'erreur
 
 @retry(
     retry=retry_if_exception_type(HTTPError),
@@ -63,6 +52,7 @@ def _is_rate_limit_error(exception) -> bool:
     stop=stop_after_attempt(5),
     reraise=True
 )
+
 def get_players(search: str=None, per_page: int=25, page: int=1)-> dict:
     """
     Récupère une liste de joueurs NBA avec une option de recherche par nom.
@@ -94,6 +84,7 @@ def get_players(search: str=None, per_page: int=25, page: int=1)-> dict:
     stop=stop_after_attempt(5),
     reraise=True
 )
+
 def get_teams() -> dict:
     """
     Récupère la liste de toutes les équipes NBA.
@@ -115,6 +106,7 @@ def get_teams() -> dict:
     stop=stop_after_attempt(5),
     reraise=True
 )
+
 def get_games(date: str = None, season: int = None, per_page: int = 10) -> dict:
     """
     Récupère les matchs NBA par date ou par saison.

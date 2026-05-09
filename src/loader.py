@@ -1,22 +1,24 @@
-#
+# loader.py
 import duckdb
 import os
 from dotenv import load_dotenv
+
 # import des méthodes internes
 from src.logger import logger
 from src.models import Player, Team, Game
 
 # Chargement des variables d'environnement
-load_dotenv
+load_dotenv()
 
 # Configuration de la connexion à DuckDB
+## appel de la variable d'environnement DUCKDB_PATH ou utilisation d'un chemin par défaut
 DUCKDB_PATH = os.getenv("DUCKDB_PATH", "data/nba.duckdb")
 
 def get_connection() -> duckdb.DuckDBPyConnection:
     """Retourne une connexion à la base DuckDB."""
+    # Assure que le dossier existe avant de se connecter
     os.makedirs(os.path.dirname(DUCKDB_PATH), exist_ok=True)
     return duckdb.connect(DUCKDB_PATH)
-
 
 def init_tables() -> None:
     """Crée les tables si elles n'existent pas.
