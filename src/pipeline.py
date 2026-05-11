@@ -2,22 +2,21 @@
 # import des bibliothèques externes
 import duckdb
 import os
-import csv
 from datetime import date, timedelta
 from dotenv import load_dotenv
 
-#import des modules internes
-from src.api_client import get_teams, get_players, get_games
-from src.models import Team, Player, Game
-from src.loader import init_tables, insert_teams,insert_games
+# import des modules internes
+from src.api_client import get_teams, get_games, get_players
+from src.models import Team, Game, Player
+from src.loader import init_tables, insert_teams, insert_games, insert_players
 from src.loader import DUCKDB_PATH
 from src.logger import logger   
 
-# Chargement des variables d'environnement
+# chargement des variables d'environnement
 load_dotenv()
 
 def load_teams() ->list[Team]:
-    """Récupère les données des équipes depuis l'API et les transforme en objets Team."""
+    """Récupère les données des équipes depuis l'API."""
     logger.info("Récupération des équipes depuis l'API...")
     data = get_teams()
     teams = [Team(**team) for team in data["data"]]
@@ -30,6 +29,7 @@ def load_recent_games(days: int = 7) -> list[Game]:
     logger.info("Récupération des matches récents depuis l'API...")
     # initalisation de la liste des matches
     all_games = []
+    # on récupère les matchs des derniers jours en itérant sur les jours précédents
     for i in range(1, days + 1):
         day = (date.today() - timedelta(days=i)).isoformat()
         data = get_games(date=day)
@@ -44,11 +44,48 @@ def load_recent_games(days: int = 7) -> list[Game]:
     logger.info(f"Total : {len(all_games)} matchs chargés")
     return all_games
 
+def load_players(search: str = None, max_pages: int = 5) -> list[Player]:
+    """
+    Récupère les joueurs depuis l'API avec pagination.
+    
+    Args:
+        search: Nom du joueur à rechercher (optionnel)
+        max_pages: Nombre maximum de pages à récupérer. 
+                   Défaut 5 (500 joueurs max) pour éviter
+                   de saturer le rate limit.
+    """
+    logger.info("Récupération des joueurs depuis l'API...")
+    all_players = []
+    page = 1
+
+    while page <= max_pages:
+        data = get_players(search="Brunson", per_page=100, page=1)
+        print(data)
+
+        if not data["data"]:
+            break
+
+        players = [Player(**p) for p in data["data"]]
+        insert_players(players)
+        all_players.extend(players)
+        logger.info(f"Page {page} : {len(players)} joueurs récupérés")
+
+        meta = data.get("meta", {})
+        total_pages = meta.get("total_pages", None)
+
+        # Si pas de total_pages, on s'arrête dès que la page est vide
+        if total_pages is None or page >= total_pages:
+            break
+
+        page += 1
+
+    logger.info(f"Total : {len(all_players)} joueurs récupérés")
+    return all_players
+
 def export_team_report() -> str:
     """Génère un rapport CSV du bilan par équipe."""
     logger.info("Génération du rapport CSV...")
     conn = duckdb.connect(DUCKDB_PATH)
-
     df = conn.execute("""
         WITH results AS (
             SELECT home_team_id as team_id,
@@ -81,10 +118,9 @@ def export_team_report() -> str:
         WHERE conference IN ('East', 'West')
         ORDER BY conference, rang_conference
     """).fetchdf()
-
     conn.close()
 
-    # Export CSV
+    # export CSV
     output_path = "data/processed/team_report.csv"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df.to_csv(output_path, index=False)
@@ -105,11 +141,13 @@ def run():
     # 3. Charger les matchs récents
     load_recent_games(days=7)
 
-    # 4. Exporter le rapport
+    # 4. Charger les joueurs
+    load_players(search="Brunson", max_pages=1)
+
+    # 5. Exporter le rapport
     output_path = export_team_report()
 
     logger.info(f"=== Pipeline terminé — rapport disponible : {output_path} ===")
-
 
 if __name__ == "__main__":
     run()
