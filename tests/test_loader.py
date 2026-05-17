@@ -3,7 +3,7 @@
 import pytest
 import duckdb
 from src.models import Team, Player, Game
-from src.loader import init_tables, insert_teams, insert_players, insert_games
+from src.loader import insert_teams, insert_players, insert_games
 
 
 @pytest.fixture
