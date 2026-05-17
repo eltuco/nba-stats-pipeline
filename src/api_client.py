@@ -6,7 +6,6 @@ from src.logger import logger
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from requests.exceptions import HTTPError
 
-
 load_dotenv()
 
 # Récupération de la clé API depuis les variables d'environnement
@@ -35,16 +34,20 @@ def _rate_limit():
     
     _last_call_time = time.time()  # ← Mise à jour du timestamp pour le prochain appel
 
-
 # Structuration d'une réponse typique de l'API:
 # response = requests.get(f"{BASE_URL}/endpoint", headers=api_key, params=paramètres du endpoint)   
 
-# Fonction pour interagir avec l'API et gérer les calls:
-## @retry :
-### retry_if_exception_type(HTTPError) → réessaie uniquement sur les erreurs HTTP
-### wait_exponential(multiplier=2, min=12, max=60) → attend 12s, puis 24s, puis 48s, max 60s
-### stop_after_attempt(5) → abandonne après 5 tentatives
-### reraise=True → si toutes les tentatives échouent, lève quand même l'erreur
+# Librairie tenacity gère les retries en cas d'erreurs HTTP, 
+# avec une stratégie d'attente exponentielle et un nombre maximum de tentatives.
+
+# Un décorateur est une fonction qui prend une autre fonction en argument et 
+# retourne une nouvelle fonction qui ajoute un comportement supplémentaire à la fonction d'origine.
+
+# Le décorateur @retry intègre:
+## retry_if_exception_type(HTTPError) → réessaie uniquement sur les erreurs HTTP
+## wait_exponential(multiplier=2, min=12, max=60) → attend 12s, puis 24s, puis 48s, max 60s
+## stop_after_attempt(5) → abandonne après 5 tentatives
+## reraise=True → si toutes les tentatives échouent, lève quand même l'erreur
 
 @retry(
     retry=retry_if_exception_type(HTTPError),
@@ -63,17 +66,22 @@ def get_players(search: str=None, per_page: int=25, page: int=1)-> dict:
     Returns:
         dict: Un dictionnaire contenant les données des joueurs récupérés.
     """
+    # Appelle la fonction de rate limit pour s'assurer de ne pas dépasser les limites de l'API
     _rate_limit()
 
     params = {"per_page": per_page, "page": page}
     if search:
         params["search"] = search
    
+   # Construction de la requête GET pour récupérer les joueurs, avec gestion des erreurs HTTP grâce à tenacity
     response = requests.get(
         f"{BASE_URL}/v1/players", 
         headers=HEADERS, 
         params=params
     )
+    # Si la réponse HTTP indique une erreur (status code 4xx ou 5xx), 
+    # une exception HTTPError sera levée, ce qui déclenchera le mécanisme de retry de tenacity. 
+    # Si la requête réussit, le code continue normalement et retourne les données JSON de la réponse.
     response.raise_for_status()
     logger.debug(f"get_players: {response.url} - Status: {response.status_code}")
     return response.json()
@@ -92,6 +100,8 @@ def get_teams() -> dict:
         Dictionnaire contenant les données de l'API
     """
     _rate_limit()
+
+    # Construction de la requête GET pour récupérer les équipes, avec gestion des erreurs HTTP grâce à tenacity
     response = requests.get(
         f"{BASE_URL}/v1/teams",
         headers=HEADERS
@@ -120,17 +130,20 @@ def get_games(date: str = None, season: int = None, per_page: int = 10) -> dict:
         Dictionnaire contenant les données de l'API
     """
     _rate_limit()
+    
     params = {"per_page": per_page}
     if date:
         params["dates[]"] = date
     if season:
         params["seasons[]"] = season
 
+# Construction de la requête GET pour récupérer les matchs, avec gestion des erreurs HTTP grâce à tenacity
     response = requests.get(
         f"{BASE_URL}/nba/v1/games",
         headers=HEADERS,
         params=params
     )
-    response.raise_for_status()
+    
+    response.raise_for_status() 
     logger.debug(f"get_games: {response.url} - Status: {response.status_code}")
     return response.json()

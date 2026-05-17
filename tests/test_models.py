@@ -118,21 +118,25 @@ def test_game_valid(game_data):
 def test_game_winner_home(game_data):
     """Le vainqueur doit être l'équipe à domicile si son score est plus élevé."""
     game = Game(**game_data)
-    assert game.winner == "New York Knicks"
+    assert game.winner is not None
+    assert game.winner.full_name == "New York Knicks"
+    assert game.winner.id == 20
 
 def test_game_winner_visitor(game_data):
     """Le vainqueur doit être l'équipe visiteuse si son score est plus élevé."""
     game_data["home_team_score"] = 98
     game_data["visitor_team_score"] = 114
     game = Game(**game_data)
-    assert game.winner == "Philadelphia 76ers"
+    assert game.winner is not None
+    assert game.winner.full_name == "Philadelphia 76ers"
+    assert game.winner.id == 2
 
 def test_game_draw(game_data):
-    """Un match nul doit retourner 'Draw'."""
+    """Un match nul doit retourner None."""
     game_data["home_team_score"] = 100
     game_data["visitor_team_score"] = 100
     game = Game(**game_data)
-    assert game.winner == "Draw"
+    assert game.winner is None
 
 def test_game_point_difference(game_data):
     """L'écart de points doit être correct."""
