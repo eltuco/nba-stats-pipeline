@@ -68,9 +68,12 @@ def init_tables() -> None:
     logger.info("Tables initialisées avec succès")
 
 
-def insert_teams(teams: list[Team]) -> None:
+def insert_teams(teams: list[Team], conn=None) -> None:
     """Insère une liste d'équipes dans DuckDB (ignore les doublons)."""
-    conn = get_connection()
+    close_after = False
+    if conn is None:
+        conn = get_connection()
+        close_after = True
 
     for team in teams:
         conn.execute("""
@@ -79,14 +82,17 @@ def insert_teams(teams: list[Team]) -> None:
             team.id, team.full_name, team.abbreviation,
             team.conference, team.division, team.city, team.name
         ])
-
-    conn.close()
+    if close_after:
+        conn.close()
     logger.info(f"{len(teams)} équipes insérées")
 
 
-def insert_players(players: list[Player]) -> None:
+def insert_players(players: list[Player], conn=None) -> None:
     """Insère une liste de joueurs dans DuckDB (ignore les doublons)."""
-    conn = get_connection()
+    close_after = False
+    if conn is None:
+        conn = get_connection()
+        close_after = True
 
     for player in players:
         conn.execute("""
@@ -96,14 +102,17 @@ def insert_players(players: list[Player]) -> None:
             player.position, player.height, player.weight,
             player.team.id if player.team else None
         ])
-
-    conn.close()
+    if close_after:
+        conn.close()
     logger.info(f"{len(players)} joueurs insérés")
 
 
-def insert_games(games: list[Game]) -> None:
+def insert_games(games: list[Game], conn=None) -> None:
     """Insère une liste de matchs dans DuckDB (ignore les doublons)."""
-    conn = get_connection()
+    close_after = False
+    if conn is None:
+        conn = get_connection()
+        close_after = True  
 
     for game in games:
         conn.execute("""
@@ -113,6 +122,6 @@ def insert_games(games: list[Game]) -> None:
             game.home_team.id, game.visitor_team.id,
             game.home_team_score, game.visitor_team_score
         ])
-
-    conn.close()
+    if close_after:
+        conn.close()    
     logger.info(f"{len(games)} matchs insérés")
